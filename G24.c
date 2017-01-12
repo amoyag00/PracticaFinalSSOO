@@ -3,15 +3,15 @@
 #include <pthread.h>
 #include <unistd.h>
 #define TRUE 1
-#define MAX_COCHES 5
+#define MAX_CARS 5
 
 pthread_t boxesWaitList[5]={0,0,0,0,0};
 pthread_mutex_t mutexBox1;
 pthread_mutex_t mutexBox2;
 
 
-pthread_cond_t condCircuito=PTHREAD_COND_INITIALIZER;
-pthread_mutex_t semaforoCochesEnCircuito;
+pthread_cond_t condCircuit=PTHREAD_COND_INITIALIZER;
+pthread_mutex_t semCircuit;
 
 void *boxesActions(void *arg);
 int main(){
@@ -33,20 +33,20 @@ int main(){
 	pthread_join(box_1,NULL);
 	pthread_join(box_2,NULL);
 
-	pthread_mutex_init(&semaforoCochesEnCircuito,NULL);
+	pthread_mutex_init(&semCircuit,NULL);
 
 	//Numero de coches en el circuito
-	int cochesEnCircuito=0;
+	int carsCircuit=0;
 	
 	//Tiene que colocarse donde anyadamos coches al circuito que es el main (Samuel)
-	pthread_mutex_lock(&semaforoCochesEnCircuito);
+	pthread_mutex_lock(&semCircuit);
 
-	while(cochesEnCircuito>=MAX_COCHES){
+	while(semCircuit>=MAX_CARS){
 
-		pthread_cond_wait(&condCircuito,&semaforoCochesEnCircuito);
+		pthread_cond_wait(&condCircuit,&semCircuit);
 
 	}
-	pthread_mutex_unlock(&semaforoCochesEnCircuito);
+	pthread_mutex_unlock(&semCircuit);
 
 	//Se hará un signal cuando un coches salga del circuito
 	
