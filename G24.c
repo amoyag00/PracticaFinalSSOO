@@ -6,6 +6,7 @@
 #include <string.h>
 #include <errno.h>
 #define TRUE 1
+#define MAX_CARS 5
 
 int racerNumber = 1;
 pthread_t circuit[5];
@@ -15,8 +16,13 @@ pthread_mutex_t mutexBox2;
 pthread_mutex_t mutexCircuit;
 void *boxesActions(void *arg);
 void racerCreation();
+pthread_cond_t condCircuit=PTHREAD_COND_INITIALIZER;
+pthread_mutex_t semCircuit;
 void *racerAction(void *arg);
+void *boxesActions(void *arg);
 int main(){
+
+	
 	struct sigaction sig;
 	pthread_t box_1,box_2;
 	pthread_attr_t attrBox1;
@@ -37,9 +43,28 @@ int main(){
 	pthread_create(&box_2,&attrBox2,boxesActions,&mutexBox2);
 	pthread_join(box_1,NULL);
 	pthread_join(box_2,NULL);
-//usar el while para que el programa no acabe y poder mandar la señal
+//usar el while para que el programa no acabe y poder mandar la señal(Carlos)
 //while(TRUE){
 //}
+
+	pthread_mutex_init(&semCircuit,NULL);
+
+	//Numero de coches en el circuito
+	int carsCircuit=0;
+	
+	//Tiene que colocarse donde anyadamos coches al circuito que es el main (Samuel)
+	pthread_mutex_lock(&semCircuit);
+
+	while(semCircuit>=MAX_CARS){
+
+		pthread_cond_wait(&condCircuit,&semCircuit);
+
+	}
+	pthread_mutex_unlock(&semCircuit);
+
+	//Se hará un signal cuando un coches salga del circuito
+	
+	
 
 	return 0;
 }
@@ -66,3 +91,5 @@ void *racerAction(void *arg){
 	printf("El corredor número %d entra al circuito\n",racerNumber);
 	racerNumber++;
 }
+
+
