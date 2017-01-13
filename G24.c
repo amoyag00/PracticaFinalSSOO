@@ -15,8 +15,6 @@ void racerCreation();
 int racerNumber = 1;
 pthread_t circuit[5];
 pthread_t boxesWaitList[5] = {0,0,0,0,0};
-pthread_mutex_t mutexBox1;
-pthread_mutex_t mutexBox2;
 pthread_mutex_t mutexCircuit;
 pthread_cond_t condCircuit=PTHREAD_COND_INITIALIZER;
 pthread_mutex_t semCircuit;
