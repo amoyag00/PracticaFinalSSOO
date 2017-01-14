@@ -27,6 +27,13 @@ typedef struct boxParameters{
 	int *attCarsOtherBox;
 }BoxParameters;
 
+typedef struct racerParameters{
+	pthread_mutex_t *mutexRacer;
+	int IDNumber;
+	int sanction;
+	int rounds;
+}RacerParameters;
+
 int main(){
 
 	
@@ -72,12 +79,12 @@ int main(){
 	//Tiene que colocarse donde anyadamos coches al circuito que es el main (Samuel)
 	pthread_mutex_lock(&semCircuit);
 
-	while(semCircuit>=MAX_CARS){
+/*	while(semCircuit>=MAX_CARS){
 
 		pthread_cond_wait(&condCircuit,&semCircuit);
 
 	}
-	pthread_mutex_unlock(&semCircuit);
+	pthread_mutex_unlock(&semCircuit);*/
 
 	//Se hará un signal cuando un coches salga del circuito
 	
@@ -114,13 +121,19 @@ void *boxesActions(void *arg){
 
 void racerCreation(){
 	pthread_t racer;
-	pthread_create(&racer,NULL,racerAction,&mutexCircuit);
-}
-
-void *racerAction(void *arg){
-	int id = racerNumber;
-	printf("El corredor número %d entra al circuito\n",racerNumber);
+	RacerParameters paramsRacer;
+	pthread_attr_t atributeRacer;
+	paramsRacer.IDNumber = racerNumber;
+	paramsRacer.sanction = 0;
+	paramsRacer.rounds = 0;
+	paramsRacer.mutexRacer = &mutexCircuit;
+	pthread_attr_init(&atributeRacer);
+        pthread_attr_setdetachstate(&atributeRacer,PTHREAD_CREATE_DETACHED);
+	pthread_create(&racer,&atributeRacer,racerAction,(void*)&paramsRacer);
 	racerNumber++;
 }
 
-
+void *racerAction(void *arg){
+	RacerParameters *params = (RacerParameters *) arg;
+	printf("El corredor número %d entra al circuito\n",params->IDNumber);
+}
