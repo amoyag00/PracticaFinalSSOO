@@ -170,10 +170,10 @@ void *racerAction(void *arg){
 	//Acaba la vuelta y mira si tiene sanción:
 	pthread_mutex_lock(&mutexCars);
 	int pos=0;
-	while(circuit[pos]!=pthread_self())){
+	while(circuit[pos]!=pthread_self()){
 		pos++;
 	}
-	if(sanction[pos]){
+	if(sanctions[pos]){
 		pthread_cond_signal(&sanctionNoticed);
 		pthread_cond_wait(&sanctionEnded,&mutexCars);
 	}
@@ -245,7 +245,7 @@ void judgeCreation(){
 	pthread_t judge;
 	pthread_attr_t attrJudge;
 	pthread_attr_init(&attrJudge);
-	pthread_setdetachstate(&attrJudge,PTHREAD_CREATE_JOINABLE);
+	pthread_attr_setdetachstate(&attrJudge,PTHREAD_CREATE_JOINABLE);
 
 	pthread_create(&judge,&attrJudge,judgeActions,&mutexJudge);
 	
