@@ -63,18 +63,18 @@ int main(){
 	pthread_mutex_init(&mutexJudge, NULL);
 	boxesCreation();
 	judgeCreation();
-
 	sig.sa_handler = racerCreation;
+//	mutex_mutex_lock(&mutexCircuit);
 	if(sigaction(SIGUSR1,&sig,NULL)==-1){
 		printf("Error: %s\n", strerror(errno));
 	}
+
 
 	
 	
 	
 //usar el while para que el programa no acabe y poder mandar la señal(Carlos)
 while(TRUE){
-
 
 
 
