@@ -23,20 +23,23 @@ int sanctions[5]={0,0,0,0,0};
 int racerNumber = 1;
 pthread_t circuit[5];
 pthread_t boxesWaitList[5] = {0,0,0,0,0};
-pthread_mutex_t mutexCircuit;
-pthread_cond_t condCircuit=PTHREAD_COND_INITIALIZER;
 
+pthread_cond_t condCircuit=PTHREAD_COND_INITIALIZER;
+pthread_cond_t sanctionNoticed = PTHREAD_COND_INITIALIZER;
+pthread_cond_t sanctionEnded = PTHREAD_COND_INITIALIZER;
 pthread_cond_t sanctionNoticed = PTHREAD_COND_INITIALIZER;
 pthread_cond_t sanctionEnded = PTHREAD_COND_INITIALIZER;
 pthread_cond_t condBox1=PTHREAD_COND_INITIALIZER;
 pthread_cond_t condBox2=PTHREAD_COND_INITIALIZER;
+
+pthread_mutex_t mutexCircuit;
 pthread_mutex_t semCircuit;
 pthread_mutex_t mutexBoxes;
 pthread_mutex_t mutexBox1;
 pthread_mutex_t mutexBox2;
 pthread_mutex_t semCircuit;
 pthread_mutex_t mutexJudge;
-
+pthread_mutex_t mutexCars;
 
 
 typedef struct boxParameters{
@@ -61,6 +64,7 @@ int main(){
 	pthread_mutex_init(&mutexBoxes, NULL);
 	pthread_mutex_init(&mutexJudge, NULL);
 	boxesCreation();
+	judgeCreation();
 
 	sig.sa_handler = racerCreation;
 	if(sigaction(SIGUSR1,&sig,NULL)==-1){
@@ -164,7 +168,18 @@ void racerCreation(){
 void *racerAction(void *arg){
 	int probBoxes;
 	RacerParameters *params = (RacerParameters *) arg;
-
+	
+	//Acaba la vuelta y mira si tiene sanción:
+	pthread_mutex_lock(&mutexCars);
+	int pos=0;
+	while(circuit[pos]!=pthread_self)){
+		pos++;
+	}
+	if(sanction[pos]){
+		pthread_cond_signal(&sanctionNoticed);
+		pthread_cond_wait(&sanctionEnded,&mutexCars);
+	}
+	pthread_mutex_unlock(&mutexCars);
 
 
 	srand(time(NULL));
@@ -217,7 +232,7 @@ void *judgeActions(void *arg){
 	
 	sanctions[corredorSancionado]=1;
 
-	pthread_cond_wait(&sanctionNoticed,&mutexJudge);
+	pthread_cond_wait(&sanctionNoticed,&mutexJudge)
 	sleep(3);
 
 	sanctions[corredorSancionado]=0;
@@ -232,10 +247,9 @@ void judgeCreation(){
 	pthread_t judge;
 	pthread_attr_t attrJudge;
 	pthread_attr_init(&attrJudge);
-	pthread_attr_setdetachstate(&attrJudge,PTHREAD_CREATE_JOINABLE);
+	pthread_setdetachstate(&attrJudge,PTHREAD_CREATE_JOINABLE);
 
 	pthread_create(&judge,&attrJudge,judgeActions,&mutexJudge);
 	
 	
 }
-
