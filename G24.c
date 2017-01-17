@@ -11,17 +11,25 @@
 
 void *racerAction(void *arg);
 void *boxesActions(void *arg);
+
 void racerCreation();
 void boxesCreation();
+void judgeCreation();
+
+int sanctions[5]={0,0,0,0,0};
 
 int racerNumber = 1;
 pthread_t circuit[5];
 pthread_t boxesWaitList[5] = {0,0,0,0,0};
 pthread_mutex_t mutexCircuit;
 pthread_cond_t condCircuit=PTHREAD_COND_INITIALIZER;
+pthread_cond_t sanctionNoticed = PTHREAD_COND_INITIALIZER;
+pthread_cond_t sanctionEnded = PTHREAD_COND_INITIALIZER;
 //pthread_cond_t condBox=
+
 pthread_mutex_t semCircuit;
 pthread_mutex_t mutexBoxes;
+pthread_mutex_t mutexJudge;
 
 typedef struct boxParameters{
 	pthread_mutex_t * mutex;
@@ -33,7 +41,7 @@ typedef struct boxParameters{
 typedef struct racerParameters{
 	pthread_mutex_t *mutexRacer;
 	int IDNumber;
-	int sanction;
+	//int sanction;
 	int rounds;
 }RacerParameters;
 
@@ -42,6 +50,7 @@ int main(){
 	
 	pthread_mutex_init(&mutexCircuit, NULL);
 	pthread_mutex_init(&mutexBoxes, NULL);
+	pthread_mutex_init(&mutexJudge, NULL);
 	//boxesCreation();
 	sig.sa_handler = racerCreation;
 	if(sigaction(SIGUSR1,&sig,NULL)==-1){
@@ -53,12 +62,15 @@ int main(){
 	
 //usar el while para que el programa no acabe y poder mandar la señal(Carlos)
 while(TRUE){
+
+
+
+
 }
 
 	///pthread_mutex_init(&semCircuit,NULL);
 
 	//Numero de coches en el circuito
-	int carsCircuit=0;
 	
 	//Tiene que colocarse donde anyadamos coches al circuito que es el main (Samuel)
 	///pthread_mutex_lock(&semCircuit);
@@ -116,17 +128,19 @@ void *boxesActions(void *arg){
 }
 
 void racerCreation(){
-	pthread_t racer;
-	RacerParameters paramsRacer;
-	pthread_attr_t atributeRacer;
-	paramsRacer.IDNumber = racerNumber;
-	paramsRacer.sanction = 0;
-	paramsRacer.rounds = 0;
-	paramsRacer.mutexRacer = &mutexCircuit;
-	pthread_attr_init(&atributeRacer);
-    pthread_attr_setdetachstate(&atributeRacer,PTHREAD_CREATE_DETACHED);
-	pthread_create(&racer,&atributeRacer,racerAction,(void*)&paramsRacer);
-	racerNumber++;
+	if(carsInCircuit<5){
+		pthread_t racer;
+		RacerParameters paramsRacer;
+		pthread_attr_t atributeRacer;
+		paramsRacer.IDNumber = racerNumber;
+		paramsRacer.sanction = 0;
+		paramsRacer.rounds = 0;
+		paramsRacer.mutexRacer = &mutexCircuit;
+		pthread_attr_init(&atributeRacer);
+	    	pthread_attr_setdetachstate(&atributeRacer,PTHREAD_CREATE_DETACHED);
+		pthread_create(&racer,&atributeRacer,racerAction,(void*)&paramsRacer);
+		racerNumber++;
+	}
 }
 
 void *racerAction(void *arg){
@@ -156,3 +170,36 @@ void boxesCreation(){
 	pthread_join(box_1,NULL);
 	pthread_join(box_2,NULL);
 }
+void *judgeActions(void *arg){
+	//Sancionar cada 10 seg
+	sleep(10);
+
+	pthread_mutext_lock(&mutexJudge);
+	
+	srand(time(NULL));		
+	int corredorSancionado = (rand()%5);
+	
+	sanctions[corredorSancionado]=1;
+
+	pthread_cond_wait(&sanctionNoticed,&mutexJudge)
+	sleep(3);
+
+	sanctions[corredorSancionado]=0;
+	pthread_cond_signal(&sanctionEnded);
+
+	pthread_mutex_unlock(&mutexJudge);
+
+}
+
+void judgeCreation(){
+
+	pthread_t judge;
+	pthread_attr_t attrJudge;
+	pthread_attr_init(&attrJudge);
+	pthread_setdetachstate(&attrJudge,PTHREAD_CREATE_JOINABLE);
+
+	pthread_create(&judge,&attrJudge,judgeActions,&mutexJudge);
+	
+	
+}
+
