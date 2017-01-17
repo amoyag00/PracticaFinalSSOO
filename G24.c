@@ -11,10 +11,12 @@
 
 void *racerAction(void *arg);
 void *boxesActions(void *arg);
+void *judgeActions(void *arg);
 
 void racerCreation();
 void boxesCreation();
 void judgeCreation();
+
 
 int sanctions[5]={0,0,0,0,0};
 
@@ -149,7 +151,7 @@ void racerCreation(){
 		RacerParameters paramsRacer;
 		pthread_attr_t atributeRacer;
 		paramsRacer.IDNumber = racerNumber;
-		paramsRacer.sanction = 0;
+		//paramsRacer.sanction = 0;
 		paramsRacer.rounds = 0;
 		paramsRacer.mutexRacer = &mutexCircuit;
 		pthread_attr_init(&atributeRacer);
@@ -162,10 +164,19 @@ void racerCreation(){
 void *racerAction(void *arg){
 	int probBoxes;
 	RacerParameters *params = (RacerParameters *) arg;
+
+
+
 	srand(time(NULL));
 	probBoxes=rand()%10 ;
+	pthread_mutex_lock(&mutexBoxes);
 	if(probBoxes>5){
-		//
+		for(int i=0;i<MAX_CARS;i++){
+			if(boxesWaitList[i]!=0){
+				boxesWaitList[i]=pthread_self();
+				continue;
+			}
+		}
 	}
 	printf("El corredor número %d entra al circuito\n",params->IDNumber);
 	
@@ -199,14 +210,14 @@ void *judgeActions(void *arg){
 	//Sancionar cada 10 seg
 	sleep(10);
 
-	pthread_mutext_lock(&mutexJudge);
+	pthread_mutex_lock(&mutexJudge);
 	
 	srand(time(NULL));		
 	int corredorSancionado = (rand()%5);
 	
 	sanctions[corredorSancionado]=1;
 
-	pthread_cond_wait(&sanctionNoticed,&mutexJudge)
+	pthread_cond_wait(&sanctionNoticed,&mutexJudge);
 	sleep(3);
 
 	sanctions[corredorSancionado]=0;
@@ -221,7 +232,7 @@ void judgeCreation(){
 	pthread_t judge;
 	pthread_attr_t attrJudge;
 	pthread_attr_init(&attrJudge);
-	pthread_setdetachstate(&attrJudge,PTHREAD_CREATE_JOINABLE);
+	pthread_attr_setdetachstate(&attrJudge,PTHREAD_CREATE_JOINABLE);
 
 	pthread_create(&judge,&attrJudge,judgeActions,&mutexJudge);
 	
