@@ -16,9 +16,6 @@ int racerNumber = 1;
 pthread_t circuit[5];
 pthread_t boxesWaitList[5] = {0,0,0,0,0};
 pthread_mutex_t mutexCircuit;
-pthread_cond_t condCircuit=PTHREAD_COND_INITIALIZER;
-pthread_mutex_t semCircuit;
-
 
 typedef struct boxParameters{
 	pthread_mutex_t * mutex;
@@ -47,10 +44,15 @@ int main(){
 	pthread_attr_setdetachstate(&attrBox2,PTHREAD_CREATE_JOINABLE);	
 
 	pthread_mutex_init(&mutexCircuit, NULL);
+	pthread_cond_init(&fullCircuit, NULL);
+	pthread_cond_init(&startRace, NULL);
 	sig.sa_handler = racerCreation;
+//	mutex_mutex_lock(&mutexCircuit);
 	if(sigaction(SIGUSR1,&sig,NULL)==-1){
 		printf("Error: %s\n", strerror(errno));
 	}
+
+		
 
 	pthread_mutex_t mutexBoxes;
 	pthread_mutex_init(&mutexBoxes, NULL);
@@ -71,13 +73,13 @@ int main(){
 //while(TRUE){
 //}
 
-	pthread_mutex_init(&semCircuit,NULL);
+//	pthread_mutex_init(&semCircuit,NULL);
 
 	//Numero de coches en el circuito
-	int carsCircuit=0;
+//	int carsCircuit=0;
 	
 	//Tiene que colocarse donde anyadamos coches al circuito que es el main (Samuel)
-	pthread_mutex_lock(&semCircuit);
+//	pthread_mutex_lock(&semCircuit);
 
 /*	while(semCircuit>=MAX_CARS){
 
