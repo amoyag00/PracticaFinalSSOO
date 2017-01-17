@@ -27,8 +27,6 @@ pthread_t boxesWaitList[5] = {0,0,0,0,0};
 pthread_cond_t condCircuit=PTHREAD_COND_INITIALIZER;
 pthread_cond_t sanctionNoticed = PTHREAD_COND_INITIALIZER;
 pthread_cond_t sanctionEnded = PTHREAD_COND_INITIALIZER;
-pthread_cond_t sanctionNoticed = PTHREAD_COND_INITIALIZER;
-pthread_cond_t sanctionEnded = PTHREAD_COND_INITIALIZER;
 pthread_cond_t condBox1=PTHREAD_COND_INITIALIZER;
 pthread_cond_t condBox2=PTHREAD_COND_INITIALIZER;
 
@@ -151,7 +149,7 @@ void *boxesActions(void *arg){
 
 void racerCreation(){
 	if(carsInCircuit<5){
-		pthread_t racer;
+		pthread_t circuit[5];
 		RacerParameters paramsRacer;
 		pthread_attr_t atributeRacer;
 		paramsRacer.IDNumber = racerNumber;
@@ -160,7 +158,11 @@ void racerCreation(){
 		paramsRacer.mutexRacer = &mutexCircuit;
 		pthread_attr_init(&atributeRacer);
 	    	pthread_attr_setdetachstate(&atributeRacer,PTHREAD_CREATE_DETACHED);
-		pthread_create(&racer,&atributeRacer,racerAction,(void*)&paramsRacer);
+		int pos=0;
+		while(circuit[pos]!=0){
+			pos++;
+		}
+		pthread_create(&circuit[pos],&atributeRacer,racerAction,(void*)&paramsRacer);
 		racerNumber++;
 	}
 }
@@ -172,7 +174,7 @@ void *racerAction(void *arg){
 	//Acaba la vuelta y mira si tiene sanción:
 	pthread_mutex_lock(&mutexCars);
 	int pos=0;
-	while(circuit[pos]!=pthread_self)){
+	while(circuit[pos]!=pthread_self())){
 		pos++;
 	}
 	if(sanction[pos]){
@@ -247,7 +249,7 @@ void judgeCreation(){
 	pthread_t judge;
 	pthread_attr_t attrJudge;
 	pthread_attr_init(&attrJudge);
-	pthread_setdetachstate(&attrJudge,PTHREAD_CREATE_JOINABLE);
+	pthread_attr_setdetachstate(&attrJudge,PTHREAD_CREATE_JOINABLE);
 
 	pthread_create(&judge,&attrJudge,judgeActions,&mutexJudge);
 	
