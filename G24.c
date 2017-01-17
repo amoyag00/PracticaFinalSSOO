@@ -6,9 +6,10 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
+
 #define TRUE 1
 #define MAX_CARS 5
-
+#define MESSAGE_LENGTH 200
 void *racerAction(void *arg);
 void *boxesActions(void *arg);
 void *judgeActions(void *arg);
@@ -16,28 +17,29 @@ void *judgeActions(void *arg);
 void racerCreation();
 void boxesCreation();
 void judgeCreation();
-
+void writeLogMessage (int * id , char * msg );
 
 int sanctions[5]={0,0,0,0,0};
-
+int winnerId=-1;
 int racerNumber = 1;
+int carsInCircuit=0;
+FILE *myLog;
 pthread_t circuit[5];
 pthread_t boxesWaitList[5] = {0,0,0,0,0};
-
+pthread_mutex_t mutexCircuit;
 pthread_cond_t condCircuit=PTHREAD_COND_INITIALIZER;
+
 pthread_cond_t sanctionNoticed = PTHREAD_COND_INITIALIZER;
 pthread_cond_t sanctionEnded = PTHREAD_COND_INITIALIZER;
 pthread_cond_t condBox1=PTHREAD_COND_INITIALIZER;
 pthread_cond_t condBox2=PTHREAD_COND_INITIALIZER;
-
-pthread_mutex_t mutexCircuit;
 pthread_mutex_t semCircuit;
 pthread_mutex_t mutexBoxes;
 pthread_mutex_t mutexBox1;
 pthread_mutex_t mutexBox2;
 pthread_mutex_t semCircuit;
 pthread_mutex_t mutexJudge;
-pthread_mutex_t mutexCars;
+
 
 
 typedef struct boxParameters{
@@ -57,24 +59,22 @@ typedef struct racerParameters{
 
 int main(){
 	struct sigaction sig;
-	
 	pthread_mutex_init(&mutexCircuit, NULL);
 	pthread_mutex_init(&mutexBoxes, NULL);
 	pthread_mutex_init(&mutexJudge, NULL);
 	boxesCreation();
-	judgeCreation();
+
 	sig.sa_handler = racerCreation;
-//	mutex_mutex_lock(&mutexCircuit);
 	if(sigaction(SIGUSR1,&sig,NULL)==-1){
 		printf("Error: %s\n", strerror(errno));
 	}
-
 
 	
 	
 	
 //usar el while para que el programa no acabe y poder mandar la señal(Carlos)
 while(TRUE){
+
 
 
 
@@ -146,10 +146,10 @@ void *boxesActions(void *arg){
 		pthread_mutex_unlock(params->mutex);
 	}	
 }
-
+//Here we initialize the attributes and create the racer threads
 void racerCreation(){
 	if(carsInCircuit<5){
-		pthread_t circuit[5];
+		pthread_t racer;
 		RacerParameters paramsRacer;
 		pthread_attr_t atributeRacer;
 		paramsRacer.IDNumber = racerNumber;
@@ -157,45 +157,61 @@ void racerCreation(){
 		paramsRacer.rounds = 0;
 		paramsRacer.mutexRacer = &mutexCircuit;
 		pthread_attr_init(&atributeRacer);
-	    	pthread_attr_setdetachstate(&atributeRacer,PTHREAD_CREATE_DETACHED);
-		int pos=0;
-		while(circuit[pos]!=0){
-			pos++;
-		}
-		pthread_create(&circuit[pos],&atributeRacer,racerAction,(void*)&paramsRacer);
+        	pthread_attr_setdetachstate(&atributeRacer,PTHREAD_CREATE_DETACHED);
+		pthread_create(&racer,&atributeRacer,racerAction,(void*)&paramsRacer);
 		racerNumber++;
+		carsInCircuit++;
 	}
 }
-
+//Racer thread actions 
 void *racerAction(void *arg){
 	int probBoxes;
+    	int trackLapTime;
 	RacerParameters *params = (RacerParameters *) arg;
-	
-	//Acaba la vuelta y mira si tiene sanción:
-	pthread_mutex_lock(&mutexCars);
-	int pos=0;
-	while(circuit[pos]!=pthread_self())){
-		pos++;
-	}
-	if(sanction[pos]){
-		pthread_cond_signal(&sanctionNoticed);
-		pthread_cond_wait(&sanctionEnded,&mutexCars);
-	}
-	pthread_mutex_unlock(&mutexCars);
-
-
 	srand(time(NULL));
+    //We get a random value to see if the racer gets in the boxes 
 	probBoxes=rand()%10 ;
-	pthread_mutex_lock(&mutexBoxes);
-	if(probBoxes>5){
-		for(int i=0;i<MAX_CARS;i++){
-			if(boxesWaitList[i]!=0){
-				boxesWaitList[i]=pthread_self();
-				continue;
-			}
-		}
-	}
-	printf("El corredor número %d entra al circuito\n",params->IDNumber);
+    //A lap is completed in between 2 to 5 seconds
+    	trackLapTime=sleep((rand()%5) +2);
+    //rounds (laps) is 0 when the racer starts the track
+    	params->rounds=0;
+    //message and racer id  for logging (not sure if its the correct way to send the message to logFile)
+    	int id = params->IDNumber;
+    	int *idNum=&id;
+    	char message[] = "El corredor entra al circuito";
+    	char *mes = &message[0];
+    //calls method that writes log messages
+    writeLogMessage(idNum,mes);
+    //Loop for the track laps (should be 5 laps to finish)
+    while(params->rounds<=5){
+        //If the amount of laps is 5 then we should check if the racer is dthe winner4
+        if(params->rounds==5){
+            //If the winnerId is -1 then there is no winner yet so we assign the corresponding id for the winner
+            if(winnerId==-1){
+                //Write on logFile (this thread id is the winner)
+		//get out of loop so we can free params and let other racer get in the track (extra part of this practice)
+            }else{
+                //get out of loop so we can free params and let other racer get in the track (extra part of this practice)
+            }	
+        }
+	//Here (maybe) should go a check for the sanctions that the judges made in case there is one on the sanctions array corresponding position
+
+	
+        //This is the part we check for mechanical issues
+        //if we encounter them then we have to go through th boxes if not we just go on with the lap
+        pthread_mutex_lock(&mutexBoxes);
+        if(probBoxes>5){
+            for(int i=0;i<MAX_CARS;i++){
+                if(boxesWaitList[i]!=0){
+                    boxesWaitList[i]=pthread_self();
+                    continue;
+                }
+            }
+        }   
+        pthread_mutex_unlock(&mutexBoxes);
+    }
+
+
 	
 }
 
@@ -234,7 +250,7 @@ void *judgeActions(void *arg){
 	
 	sanctions[corredorSancionado]=1;
 
-	pthread_cond_wait(&sanctionNoticed,&mutexJudge)
+	pthread_cond_wait(&sanctionNoticed,&mutexJudge);
 	sleep(3);
 
 	sanctions[corredorSancionado]=0;
@@ -255,3 +271,17 @@ void judgeCreation(){
 	
 	
 }
+
+void writeLogMessage (int * id , char * msg ) {
+// We get the local time
+    time_t now = time (0);
+    struct tm * tlocal = localtime (& now );
+    char stnow [19];
+    strftime ( stnow , 19 , " %d/ %m/ %y %H: %M: %S", tlocal );
+
+// Write in log (APPEND)
+    myLog = fopen("registroTiempos.log", "a");
+    fprintf ( myLog , "[ %s] %d: %s\n", stnow , id , msg ) ;
+    fclose (myLog);
+ }
+
