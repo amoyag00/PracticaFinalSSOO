@@ -19,15 +19,19 @@ pthread_t circuit[5];
 pthread_t boxesWaitList[5] = {0,0,0,0,0};
 pthread_mutex_t mutexCircuit;
 pthread_cond_t condCircuit=PTHREAD_COND_INITIALIZER;
-//pthread_cond_t condBox=
+pthread_cond_t condBox1=PTHREAD_COND_INITIALIZER;
+pthread_cond_t condBox2=PTHREAD_COND_INITIALIZER;
 pthread_mutex_t semCircuit;
 pthread_mutex_t mutexBoxes;
+pthread_mutex_t mutexBox1;
+pthread_mutex_t mutexBox2;
 
 typedef struct boxParameters{
 	pthread_mutex_t * mutex;
 	pthread_t carID;
 	int attendedCars;
-	int *attCarsOtherBox;
+	int *otherIsClosed;
+	int isClosed;
 }BoxParameters;
 
 typedef struct racerParameters{
@@ -42,7 +46,7 @@ int main(){
 	
 	pthread_mutex_init(&mutexCircuit, NULL);
 	pthread_mutex_init(&mutexBoxes, NULL);
-	//boxesCreation();
+	boxesCreation();
 	sig.sa_handler = racerCreation;
 	if(sigaction(SIGUSR1,&sig,NULL)==-1){
 		printf("Error: %s\n", strerror(errno));
@@ -83,8 +87,6 @@ void *boxesActions(void *arg){
 		pthread_mutex_lock(params->mutex);
 		if(boxesWaitList[0]!=0){
 			params->carID=boxesWaitList[0];
-			
-			//
 			int i=0;
 			/*Desplaza la lista para que despues de atender
 			 al primero el segundo sea el primero, el tercero el segundo, etc.*/
@@ -97,18 +99,28 @@ void *boxesActions(void *arg){
 			srand(time(NULL));
 			
 			sleep((rand()%3) +1);
-			//Comprobar si hay problemas. 70% no tiene, 30% sí-> si hay abandonar carrera
+			//Comprobar si hay problemas. 70% no tiene, 30% ;sí-> si hay abandonar carrera
 			int probability=(rand()%10)+1;
 			//mandar señal de terminar thread al coche de threadID 'carID'
 			if(probability>=7){
 				pthread_cancel(params->carID);
 			}
-			
-			//TODO Comprobar si hay que cerrar el box - sección crítica(?) (Alejandro)
-			
-			
-		}else{
+			//TODO Comprobar si hay que cerrar el box
+			params->attendedCars++;
+			if(params->attendedCars>=3){
+				pthread_mutex_lock(params->mutex);
+				if(params->otherIsClosed==0){
+					params->isClosed=1;
+					params->attendedCars=0;
+				}
+				pthread_mutex_unlock(params->mutex);
+			}
+			if(params->isClosed==1){
+				sleep(20);
+				params->isClosed=0;
+			}
 
+		}else{
 			sleep(1);
 		}	
 		pthread_mutex_unlock(params->mutex);
@@ -130,8 +142,15 @@ void racerCreation(){
 }
 
 void *racerAction(void *arg){
+	int probBoxes;
 	RacerParameters *params = (RacerParameters *) arg;
+	srand(time(NULL));
+	probBoxes=rand()%10 ;
+	if(probBoxes>5){
+		//
+	}
 	printf("El corredor número %d entra al circuito\n",params->IDNumber);
+	
 }
 
 void boxesCreation(){
@@ -146,8 +165,10 @@ void boxesCreation(){
 	BoxParameters paramsBox2;
 	paramsBox1.attendedCars=0;
 	paramsBox2.attendedCars=0;
-	paramsBox1.attCarsOtherBox=&(paramsBox2.attendedCars);
-	paramsBox2.attCarsOtherBox=&(paramsBox1.attendedCars);
+	paramsBox1.isClosed=0;
+	paramsBox2.isClosed=0;
+	paramsBox1.otherIsClosed=&(paramsBox2.isClosed);
+	paramsBox2.otherIsClosed=&(paramsBox1.isClosed);
 	paramsBox1.mutex=&mutexBoxes;
 	paramsBox2.mutex=&mutexBoxes;
 
