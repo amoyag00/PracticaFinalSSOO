@@ -27,8 +27,6 @@ pthread_t boxesWaitList[5] = {0,0,0,0,0};
 pthread_cond_t condCircuit=PTHREAD_COND_INITIALIZER;
 pthread_cond_t sanctionNoticed = PTHREAD_COND_INITIALIZER;
 pthread_cond_t sanctionEnded = PTHREAD_COND_INITIALIZER;
-pthread_cond_t sanctionNoticed = PTHREAD_COND_INITIALIZER;
-pthread_cond_t sanctionEnded = PTHREAD_COND_INITIALIZER;
 pthread_cond_t condBox1=PTHREAD_COND_INITIALIZER;
 pthread_cond_t condBox2=PTHREAD_COND_INITIALIZER;
 
@@ -172,7 +170,7 @@ void *racerAction(void *arg){
 	//Acaba la vuelta y mira si tiene sanción:
 	pthread_mutex_lock(&mutexCars);
 	int pos=0;
-	while(circuit[pos]!=pthread_self)){
+	while(circuit[pos]!=pthread_self())){
 		pos++;
 	}
 	if(sanction[pos]){
@@ -232,7 +230,7 @@ void *judgeActions(void *arg){
 	
 	sanctions[corredorSancionado]=1;
 
-	pthread_cond_wait(&sanctionNoticed,&mutexJudge)
+	pthread_cond_wait(&sanctionNoticed,&mutexJudge);
 	sleep(3);
 
 	sanctions[corredorSancionado]=0;
