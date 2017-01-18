@@ -28,10 +28,6 @@ pthread_t circuit[5];
 pthread_t boxesWaitList[5] = {0,0,0,0,0};
 pthread_mutex_t mutexCircuit;
 pthread_cond_t condCircuit=PTHREAD_COND_INITIALIZER;
-<<<<<<< HEAD
-
-=======
->>>>>>> dd2eb02a8b9814e3eee0500272f1a1beecf0caa7
 pthread_cond_t sanctionNoticed = PTHREAD_COND_INITIALIZER;
 pthread_cond_t sanctionEnded = PTHREAD_COND_INITIALIZER;
 pthread_cond_t condBox1=PTHREAD_COND_INITIALIZER;
@@ -160,9 +156,6 @@ void racerCreation(){
 		paramsRacer.rounds = 0;
 		paramsRacer.mutexRacer = &mutexCircuit;
 		pthread_attr_init(&atributeRacer);
-<<<<<<< HEAD
-        	pthread_attr_setdetachstate(&atributeRacer,PTHREAD_CREATE_DETACHED);
-=======
 	    	pthread_attr_setdetachstate(&atributeRacer,PTHREAD_CREATE_DETACHED);
 		int pos =0;
 		/*while(circuit[pos]!=NULL){
@@ -170,7 +163,6 @@ void racerCreation(){
 		}
 		paramsRacer.sanction = 0;
 		sanctions[pos] = paramsRacer.sanction;*/
->>>>>>> dd2eb02a8b9814e3eee0500272f1a1beecf0caa7
 		pthread_create(&racer,&atributeRacer,racerAction,(void*)&paramsRacer);
 		racerNumber++;
 		carsInCircuit++;
@@ -210,7 +202,6 @@ void *racerAction(void *arg){
 	//Here (maybe) should go a check for the sanctions that the judges made in case there is one on the sanctions array corresponding position
 
 	
-<<<<<<< HEAD
         //This is the part we check for mechanical issues
         //if we encounter them then we have to go through th boxes if not we just go on with the lap
         pthread_mutex_lock(&mutexBoxes);
@@ -226,7 +217,6 @@ void *racerAction(void *arg){
     }
 
 
-=======
 	//Acaba la vuelta y mira si tiene sanción:
 	/*pthread_mutex_lock(&mutexCars);
 	int pos=0;
@@ -238,28 +228,6 @@ void *racerAction(void *arg){
 		pthread_cond_wait(&sanctionEnded,&mutexCars);
 	}
 	pthread_mutex_unlock(&mutexCars);*/
-
-	while(params->rounds<5){
-		srand(time(NULL));
-		sleep((rand()%3)+2);
-		params->rounds++;
-		probBoxes=rand()%10 ;
-		//hay que hcer lock mutex y hacer wait y signal con variables condicion
-		if(sanctions[((params->IDNumber)-1)%5]==1){
-			
-		}
-		pthread_mutex_lock(&mutexBoxes);
-		if(probBoxes>5){
-			for(int i=0;i<MAX_CARS;i++){
-				if(boxesWaitList[i]!=0){
-					boxesWaitList[i]=pthread_self();
-					continue;
-				}
-			}
-		}
-		printf("El corredor número %d entra al circuito\n",params->IDNumber);
-	}
->>>>>>> dd2eb02a8b9814e3eee0500272f1a1beecf0caa7
 	
 }
 
