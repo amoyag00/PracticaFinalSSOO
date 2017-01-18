@@ -51,6 +51,8 @@ typedef struct racerParameters{
 	int nCar;
 	int sanction;
 	int rounds;
+	time_t initialT;
+	time_t finalT;
 }RacerParameters;
 
 RacerParameters arrayCars[MAX_CARS]={{.IDNumber=0,.nCar=0,.sanction=0,.rounds=0}};
@@ -70,8 +72,8 @@ int main(){
 	}
 	pthread_mutex_lock(&mutexCreate);
 	pthread_cond_wait(&condCreate,&mutexCreate);
-	//boxesCreation();
-	//judgeCreation();
+	boxesCreation();
+	judgeCreation();
 	pthread_mutex_unlock(&mutexCreate);	
 	//usar el while para que el programa no acabe y poder mandar la señal(Carlos)
 	//hacer joinable
@@ -156,6 +158,7 @@ void *boxesActions(void *arg){
 }
 
 void racerCreation(){
+
 	if(racerNumber<5){
 		/*pthread_t racers[racerNumber];
 		RacerParameters paramsRacer;
@@ -177,7 +180,11 @@ void racerCreation(){
 		racerNumber++;
 		pthread_t racer;
 		pthread_create(&racer,NULL,racerAction,(void*)&arrayCars[pos]);
+		pthread_mutex_lock(&mutexCreate);
+		pthread_cond_signal(&condCreate);
+		pthread_mutex_unlock(&mutexCreate);
 	}
+
 }
 
 void *racerAction(void *arg){
@@ -191,11 +198,21 @@ void *racerAction(void *arg){
 	sprintf(racerNum,"Corredor %d",params->IDNumber);
 	writeLogMessage(racerNum,"Entra al circuito");
 	for(;;){
-		
+		params->initialT=time(0);
 		random=(rand()%4)+2;
 		sleep(random);
-		sprintf(msg,"Completa la vuelta número %d en %d segundos",(params->rounds+1),random);
-		writeLogMessage(racerNum,msg);
+		/*probBoxes=rand()%10 ;
+		pthread_mutex_lock(&mutexBoxes);
+		if(probBoxes>5){
+			for(i=0;i<MAX_CARS;i++){
+				if(boxesWaitList[i]!=0){
+					boxesWaitList[i]=pthread_self();
+					sprintf(racerNum,"Entra en boxes");
+					break;
+				}
+			}
+		}
+		pthread_mutex_unlock(&mutexBoxes);*/
 
 		//Acaba la vuelta y mira si tiene sanción:
 		pthread_mutex_lock(&mutexJudge);
@@ -209,19 +226,9 @@ void *racerAction(void *arg){
 			
 		}
 		pthread_mutex_unlock(&mutexJudge);
-		
-		/*probBoxes=rand()%10 ;
-		pthread_mutex_lock(&mutexBoxes);
-		if(probBoxes>5){
-			for(i=0;i<MAX_CARS;i++){
-				if(boxesWaitList[i]!=0){
-					boxesWaitList[i]=pthread_self();
-					sprintf(racerNum,"Entra en boxes");
-					break;
-				}
-			}
-		}
-		pthread_mutex_unlock(&mutexBoxes);*/
+		params->finalT=time(0);
+		sprintf(msg,"Completa la vuelta número %d en %lu segundos",(params->rounds+1),(params->finalT-params->initialT));
+		writeLogMessage(racerNum,msg);
 		pthread_mutex_lock(&mutexVictory);
 		params->rounds++;
 		if(params->rounds==NUM_ROUNDS){
