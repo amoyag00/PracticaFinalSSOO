@@ -48,9 +48,12 @@ typedef struct boxParameters{
 
 typedef struct racerParameters{
 	int IDNumber;
-	//int sanction;
+	int nCar;
+	int sanction;
 	int rounds;
 }RacerParameters;
+
+RacerParameters arrayCars[MAX_CARS]={{.IDNumber=0,.nCar=0,.sanction=0,.rounds=0}};
 
 int main(){
 	struct sigaction sig;
@@ -68,9 +71,9 @@ int main(){
 	pthread_mutex_lock(&mutexCreate);
 	pthread_cond_wait(&condCreate,&mutexCreate);
 	//boxesCreation();
-	judgeCreation();
+	//judgeCreation();
 	pthread_mutex_unlock(&mutexCreate);	
-//usar el while para que el programa no acabe y poder mandar la señal(Carlos)
+	//usar el while para que el programa no acabe y poder mandar la señal(Carlos)
 	//hacer joinable
 	while(TRUE){
 
@@ -154,7 +157,7 @@ void *boxesActions(void *arg){
 
 void racerCreation(){
 	if(racerNumber<5){
-		pthread_t racers[racerNumber];
+		/*pthread_t racers[racerNumber];
 		RacerParameters paramsRacer;
 		//pthread_attr_t atributeRacer;
 		paramsRacer.IDNumber = ++racerNumber;
@@ -163,11 +166,17 @@ void racerCreation(){
 		
 		//pthread_attr_init(&atributeRacer);
 	    //pthread_attr_setdetachstate(&atributeRacer,PTHREAD_CREATE_DETACHED);
-		pthread_create(&racers[racerNumber-1],NULL,racerAction,(void*)&paramsRacer);
+		pthread_create(&racers[racerNumber-1],NULL,racerAction,(void*)&paramsRacer);*/
+		int pos=0;		
+		while(arrayCars[pos].IDNumber!=0){
+			pos++;
+		}
+		arrayCars[pos].IDNumber = pos+1;
+		printf("%d\n",pos);
 		
-		pthread_mutex_lock(&mutexCreate);
-		pthread_cond_signal(&condCreate);
-		pthread_mutex_unlock(&mutexCreate);
+		racerNumber++;
+		pthread_t racer;
+		pthread_create(&racer,NULL,racerAction,(void*)&arrayCars[pos]);
 	}
 }
 
@@ -220,7 +229,10 @@ void *racerAction(void *arg){
 				winner=1;
 				writeLogMessage(racerNum,"Ha ganado la carrera");
 			}
+			pthread_mutex_unlock(&mutexVictory);
+			racerNumber--;
 			break;
+			
 		}
 		
 		pthread_mutex_unlock(&mutexVictory);
