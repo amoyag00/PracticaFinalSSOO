@@ -216,6 +216,7 @@ void *racerAction(void *arg){
 	
 
 	RacerParameters *params = (RacerParameters *) arg;
+	writeLogMessage(racerNum,"Entra al circuito");
 
 	pthread_mutex_lock(&mutexCreate);
 	pthread_cond_signal(&condCreate);
@@ -230,25 +231,29 @@ void *racerAction(void *arg){
 	
 	char racerNum [256], msg [256];
 	sprintf(racerNum,"Corredor %d",params->IDNumber);
-	writeLogMessage(racerNum,"Entra al circuito");
+	//writeLogMessage(racerNum,"Entra al circuito");
 	for(;;){
 		params->initialT=time(0);
 		random=(rand()%4)+2;
 		sleep(random);
 		//Acaba la vuelta y mira si tiene que entrar a boxes y si tiene sanción:
-		/*probBoxes=rand()%10 ;
+
+		probBoxes=rand()%10 ;
 		pthread_mutex_lock(&mutexBoxes);
 		if(probBoxes>5){
 			for(i=0;i<MAX_CARS;i++){
-				if(boxesWaitList[i]!=0){
+				if(boxesWaitList[i]==0){
 					boxesWaitList[i]=pthread_self();
 					sprintf(racerNum,"Entra en boxes");
 					break;
 				}
 			}
 		}
-		pthread_mutex_unlock(&mutexBoxes);*/
+
+		pthread_mutex_unlock(&mutexBoxes);
 		
+
+		//Juez
 		if(params->sanctioned==1){
 			pthread_mutex_lock(&mutexJudge);
 			sanctionReceived=1;
@@ -320,21 +325,33 @@ void *judgeActions(void *arg){
 		}
 		
 		sleep(10);
+
 		/*if(racerNumber<=0){
 			pthread_mutex_lock(&mutexJudge);
 			pthread_cond_wait(&condCreate,&mutexJudge);
 			pthread_mutex_unlock(&mutexJudge);
 		}*/
-		
 
 		pthread_mutex_lock(&mutexJudge);
 
 		int sanctionedRacer = rand()% (racerNumber);
+
 		/*while(arrayCars[sanctionedRacer].IDNumber==0){
 			sanctionedRacer = rand()%racerNumber;
 		}		
 		arrayCars[sanctionedRacer].sanctioned=1;*/
 		
+		while(arrayCars[sanctionedRacer].IDNumber==0){
+			sanctionedRacer = rand()% (racerNumber);
+
+			if(racerNumber<=0){
+				pthread_mutex_lock(&mutexJudge);
+				pthread_cond_wait(&condCreate,&mutexJudge);
+				pthread_mutex_unlock(&mutexJudge);
+			}
+		}
+
+		arrayCars[sanctionedRacer].sanctioned=1;		
 	
 		sprintf(msg,"Sanciona al corredor %d",arrayCars[sanctionedRacer].IDNumber);
 		writeLogMessage("Juez",msg);
