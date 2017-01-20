@@ -17,6 +17,7 @@ void *judgeActions(void *arg);
 void racerCreation();
 void boxesCreation();
 void judgeCreation();
+void endRace();
 void writeLogMessage(char *id, char *msg);
 
 int nRacer=1;
@@ -56,12 +57,15 @@ typedef struct racerParameters{
 	int rounds;
 	time_t initialT;
 	time_t finalT;
+	time_t total;
 }RacerParameters;
 
 RacerParameters arrayCars[MAX_CARS];
+RacerParameters winnerRacer = {.total = 500};
 
 int main(){
 	struct sigaction sig;
+	struct sigaction endSignal;
 	
 	pthread_mutex_init(&mutexCreate, NULL);
 	pthread_mutex_init(&mutexBoxes, NULL);
@@ -70,6 +74,7 @@ int main(){
 
 	
 	sig.sa_handler = racerCreation;
+	
 	if(sigaction(SIGUSR1,&sig,NULL)==-1){
 		printf("Error: %s\n", strerror(errno));
 	}
@@ -77,13 +82,29 @@ int main(){
 	pthread_cond_wait(&condCreate,&mutexCreate);
 	boxesCreation();
 	judgeCreation();
-	pthread_mutex_unlock(&mutexCreate);	
+	pthread_mutex_unlock(&mutexCreate);
+
+	endSignal.sa_handler = endRace;
+	if(sigaction(SIGINT,&endSignal,NULL)==-1){
+		printf("Error: %s\n", strerror(errno));
+	}	
 	//usar el while para que el programa no acabe y poder mandar la señal(Carlos)
 	//hacer joinable
 	while(TRUE){
 
 	}
 	return 0;
+}
+
+void endRace(){
+
+	char msg[256], racerNum[256];
+	//sprintf(msg,"Completa la vuelta número %d en %lu segundos",(params->rounds+1),(roundTime));
+	//writeLogMessage
+	sprintf(msg,"Es el ganador de la carrera con un tiempo de %lu segundos",winnerRacer.total);
+	sprintf(racerNum,"Corredor %d",winnerRacer.IDNumber);
+	writeLogMessage(racerNum, msg);
+	exit(0);
 }
 
 void boxesCreation(){
@@ -204,6 +225,7 @@ void *racerAction(void *arg){
 	probBoxes=0;
 	i=0;
 	random=0;
+	time_t roundTime;
 	srand(time(NULL));
 	
 	char racerNum [256], msg [256];
@@ -238,17 +260,23 @@ void *racerAction(void *arg){
 		}
 		
 		params->finalT=time(0);
+		roundTime = params->finalT-params->initialT;
+		params->total = params->total + roundTime;
 		
-		sprintf(msg,"Completa la vuelta número %d en %lu segundos",(params->rounds+1),(params->finalT-params->initialT));
+		sprintf(msg,"Completa la vuelta número %d en %lu segundos",(params->rounds+1),(roundTime));
 		writeLogMessage(racerNum,msg);
 		
 
 		pthread_mutex_lock(&mutexVictory);
 		params->rounds++;
 		if(params->rounds==NUM_ROUNDS){
-			if(winner==0){
+			/*if(winner==0){
 				winner=1;
 				writeLogMessage(racerNum,"Ha ganado la carrera");
+			}*/
+			if(params->total<winnerRacer.total){
+				winnerRacer.total = params->total;
+				winnerRacer.IDNumber = params->IDNumber;
 			}
 			pthread_mutex_unlock(&mutexVictory);
 			racerNumber--;
@@ -292,13 +320,20 @@ void *judgeActions(void *arg){
 		}
 		
 		sleep(10);
-
+		/*if(racerNumber<=0){
+			pthread_mutex_lock(&mutexJudge);
+			pthread_cond_wait(&condCreate,&mutexJudge);
+			pthread_mutex_unlock(&mutexJudge);
+		}*/
+		
 
 		pthread_mutex_lock(&mutexJudge);
 
 		int sanctionedRacer = rand()% (racerNumber);
-		
-		arrayCars[sanctionedRacer].sanctioned=1;
+		/*while(arrayCars[sanctionedRacer].IDNumber==0){
+			sanctionedRacer = rand()%racerNumber;
+		}		
+		arrayCars[sanctionedRacer].sanctioned=1;*/
 		
 	
 		sprintf(msg,"Sanciona al corredor %d",arrayCars[sanctionedRacer].IDNumber);
