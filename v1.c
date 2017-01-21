@@ -6,8 +6,8 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
+
 #define TRUE 1
-#define MAX_CARS 5
 #define NUM_ROUNDS 5
 
 void *racerAction(void *arg);
@@ -20,11 +20,21 @@ void judgeCreation();
 void endRace();
 void writeLogMessage(char *id, char *msg);
 
+int finishExec=0;
+//DEFINED BY ARGUMENTS
+int maxCars;
+int maxBoxes;
+
+//Manejo de recursos estaticos
+int paramCarrera[2]={0,0};
+//Saves number of racers in the track
 int nRacer;
+//Saves the last racer id
 int racerNumber;
+//File for the logger
 FILE *logFile;
 
-//flags
+//Variable that saves a 0 or 1 deppending if its time for the judge to give a sanction
 int sanctionReceived;
 
 
@@ -60,11 +70,13 @@ typedef struct racerParameters{
 	time_t finalT;
 	time_t totalT;
 }RacerParameters;
-
-RacerParameters arrayCars[MAX_CARS];
+//Array for storing car postions
+RacerParameters arrayCars[maxCars];
 RacerParameters winnerRacer = {.totalT = 500};
 
-int main(){
+
+//Entry point for the entire practice
+int main(int argc, char *argv[]){
 	struct sigaction sig;
 	struct sigaction endSignal;
 	
@@ -91,19 +103,64 @@ int main(){
 	if(sigaction(SIGINT,&endSignal,NULL)==-1){
 		printf("Error: %s\n", strerror(errno));
 	}	
+	if (argc>=4){
+		printf("To many params\n");
+
+	}else if(argc==1){
+		printf("Default option \n");
+		maxCars=5;
+		maxBoxes = 2;
+	}else if(argc==2){//Pass max car 
+		printf("Racer max amount defined\n");
+		maxCars=atoi(argv[1]);
+		paramCarrera[0]=maxCars;
+		maxBoxes=2;
+	}else if(argc==3){//PASS MAX CARS AND BOXES
+		printf("Racer an boxes max amount defined\n");
+		maxCars=atoi(argv[1]);
+		paramCarrera[0]=maxCars;
+		maxBoxes=atoi(argv[2]);
+		paramCarrera[1]=maxBoxes;
+	}
+
+	
 	//usar el while para que el programa no acabe y poder mandar la señal(Carlos)
 	//hacer joinable
-	while(TRUE){
-
+//Waiting for the signals to arrive
+	while(finishExec==0){
+		endSignal.sa_handler=endRace;
+		if (sigaction(SIGINT,&endSignal,NULL)==-1){
+			printf("Error: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		if(sigaction(SIGUSR1,&sig,NULL)==-1){
+			printf("Error: %s\n", strerror(errno));
+		}
+		pause();
+	}
+	if (pthread_mutex_destroy (&mutexRacers)!=0){
+		printf("Error mutex\n");
+	}
+	if (pthread_mutex_destroy (&mutexBoxes)!=0){
+		printf("Error mutex\n");
+	}
+	if (pthread_mutex_destroy (&mutexBoxesList)!=0){
+		printf("Error mutex\n");
+	}
+	if (pthread_mutex_destroy (&mutexJudge)!=0){
+		printf("Error mutex\n");
+	}
+	if (pthread_mutex_destroy (&mutexVictory)!=0){
+		printf("Error mutex\n");
+	}
+	if (pthread_mutex_destroy (&semaphore)!=0){
+		printf("Error mutex\n");
 	}
 	return 0;
 }
 
 void endRace(){
-
 	char msg[256], racerNum[256];
-	//sprintf(msg,"Completa la vuelta número %d en %lu segundos",(params->rounds+1),(roundTime));
-	//writeLogMessage
 	sprintf(msg,"Es el ganador de la carrera con un tiempo de %lu segundos",winnerRacer.totalT);
 	sprintf(racerNum,"Corredor %d",winnerRacer.IDNumber);
 	writeLogMessage(racerNum, msg);
@@ -111,35 +168,57 @@ void endRace(){
 }
 
 void boxesCreation(){
-	pthread_t box_1,box_2;
+	pthread_t box[paramCarrera[1]];
+	BoxParameters paramsBox[paramCarrera[1]];
+	for(int i=0; i<=paramCarrera[1];i++){
+		paramsBox[i].attendedCars=0;
+		paramsBox[i].isClosed=0;
+		paramsBox[i].otherIsClosed=&(paramsBox[i+1].isClosed);
+		strcpy(paramsBox[i].boxName,("box_%d",i+1));
+	}	
+	for(int i=0; i<=paramCarrera[1];i++){
+        	int err = pthread_create(&(box[i]), NULL, boxesActions, (void*)&paramsBox[i]);
+        	if (err != 0)
+            		printf("\ncan't create thread :[%s]", strerror(err));
+        	else
+            		printf("\n Box created successfully\n");
+		pthread_join(("box_%d",i+1),NULL);
+	}
+
+	//pthread_t box_1,box_2;
 	/*pthread_attr_t attrBox1;
 	pthread_attr_t attrBox2;
 	pthread_attr_init(&attrBox1);
 	pthread_attr_init(&attrBox2);
 	pthread_attr_setdetachstate(&attrBox1,PTHREAD_CREATE_JOINABLE);
-	pthread_attr_setdetachstate(&attrBox2,PTHREAD_CREATE_JOINABLE);*/
+	pthread_attr_setdetachstate(&attrBox2,PTHREAD_CREATE_JOINABLE);
+	//Struct for the boxes (has the params for each box)
 	BoxParameters paramsBox1;
 	BoxParameters paramsBox2;
+	//define number of attended cars / if it is closed and if the other box is closed
 	paramsBox1.attendedCars=0;
 	paramsBox2.attendedCars=0;
 	paramsBox1.isClosed=0;
 	paramsBox2.isClosed=0;
 	paramsBox1.otherIsClosed=&(paramsBox2.isClosed);
 	paramsBox2.otherIsClosed=&(paramsBox1.isClosed);
+	//Box names
 	strcpy(paramsBox1.boxName,"box_1");
 	strcpy(paramsBox2.boxName,"box_2");
 	
-
+	//Finally the boxes are created (this will have to be different for the extra parts of the assignment)
 	pthread_create (&box_1,	NULL,boxesActions,(void*)&paramsBox1);
 	pthread_create(&box_2,NULL,boxesActions,(void*)&paramsBox2);
 	//pthread_join(box_1,NULL);
-	//pthread_join(box_2,NULL);
+	//pthread_join(box_2,NULL);*/
 }
 
 void *boxesActions(void *arg){
 	BoxParameters * params=(BoxParameters*)arg;
+	//mechanical issues probability.
 	int prob=0;
 	srand(time(NULL));
+	//Infinit loop so boxes never stop working even after the 5 racers cross the finish line
 	for(;;){
 		pthread_mutex_lock(&mutexBoxes);
 		if(boxesWaitList[0]!=0){
@@ -147,16 +226,16 @@ void *boxesActions(void *arg){
 			int i=0;
 			/*Desplaza la lista para que despues de atender
 			 al primero el segundo sea el primero, el tercero el segundo, etc.*/
-			for(i=0;i<MAX_CARS-1;i++){
+			//Replace the list 1# position for the next so another racer can be fixed
+			for(i=0;i<maxCars-1;i++){
 				boxesWaitList[i]=boxesWaitList[i+1];
 				boxesWaitList[i+1]=0;
 			}
 			pthread_mutex_unlock(&mutexBoxes);
-			//Dormir tiempo de atención, de  1 a 3 segundos aleatorio
-			
-			
+			//Sleep box time (between 1 and 3 seconds)
 			sleep((rand()%3) +1);
-			//Comprobar si hay problemas. 70% no tiene, 30% ;sí-> si hay abandonar carrera
+			//Check for mechanical issues.
+			//If probability is bigger than 70% then because of mechanical issues the racer leaves the race (cancel signal to thread)
 			prob=(rand()%10)+1;
 			//mandar señal de terminar thread al racer
 			
@@ -169,32 +248,36 @@ void *boxesActions(void *arg){
 				pthread_cond_signal(&condRepared);
 				pthread_mutex_unlock(&semaphore);
 			
-			//Comprobar si hay que cerrar el box
+			//Check that the box is closed (after attending 3 cars the box closes)
 			params->attendedCars++;
 			if(params->attendedCars>=3){
 				pthread_mutex_lock(&mutexBoxes);
+				//Can close only if the other box is not.
 				if(params->otherIsClosed==0){
+//Close the box.
 					params->isClosed=1;
+//Reset number of attended cars.
 					params->attendedCars=0;
 				}
 				pthread_mutex_unlock(&mutexBoxes);
 			}
+			//If the box already fixed 3 cars, the box is closed for 20 seconds and the it opens again
 			if(params->isClosed==1){
 				writeLogMessage(params->boxName,"Se cierra temporalmente");
 				sleep(20);
 				params->isClosed=0;
 				writeLogMessage(params->boxName,"Se abre");
 			}
-
+		//Else if o
 		}else{
 			sleep(1);
 		}	
 		pthread_mutex_unlock(&mutexBoxes);
 	}	
 }
-
+//Here we initialize the attributes and create the racer threads
 void racerCreation(){
-
+//If the amount of cars in the circuit is more then five, then we still cannot create another
 	if(racerNumber<5){
 		/*pthread_t racers[racerNumber];
 		RacerParameters paramsRacer;
@@ -221,7 +304,7 @@ void racerCreation(){
 	}
 
 }
-
+//Method that defines the racer threads actions
 void *racerAction(void *arg){
 	char racerNum [256], msg [256];
 	int probBoxes,i,random;
@@ -245,7 +328,7 @@ void *racerAction(void *arg){
 		if(probBoxes>5){
 			
 			params->repared=0;
-			for(i=0;i<MAX_CARS;i++){
+			for(i=0;i<maxCars;i++){
 				if(boxesWaitList[i]==0){
 					boxesWaitList[i]=params->posInArray;
 					writeLogMessage(racerNum,"Entra en boxes");
