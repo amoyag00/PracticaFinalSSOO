@@ -48,6 +48,7 @@ pthread_mutex_t mutexAssign;//Asignar box al corredor
 pthread_mutex_t mutexJudge;//Comunicar juez con Corredores
 pthread_mutex_t mutexVictory;//Para acceder a winnerRacer
 pthread_mutex_t mutexBox[2];//Comunicar corredores con boxes
+pthread_mutex_t mutexClose;//Comunicarse a la hora de cerrar
 
 
 
@@ -88,6 +89,7 @@ int main(){
 	pthread_mutex_init(&mutexAssign,NULL);
 	pthread_mutex_init(&mutexBox[0],NULL);
 	pthread_mutex_init(&mutexBox[1],NULL);
+	pthread_mutex_init(&mutexClose,NULL);
 
 
 	pthread_cond_init(&condBox[0],NULL);
@@ -96,6 +98,7 @@ int main(){
 	pthread_cond_init(&sanctionNoticed,NULL);
 	pthread_cond_init(&sanctionEnded,NULL);
 	pthread_cond_init(&condBoxAssigned,NULL);
+
 	nRacer=1;
 	racerNumber=0;
 	openBoxes=0;
@@ -114,7 +117,7 @@ int main(){
 		printf("Error: %s\n", strerror(errno));
 	}	
 	boxesCreation();
-	//judgeCreation();
+	judgeCreation();
 	for(;;){
 		pause();
 	}
@@ -145,10 +148,10 @@ void boxesCreation(){
 	arrayBoxes[1].racerPos=-1;
 	arrayBoxes[0].carIsOut=0;
 	arrayBoxes[1].carIsOut=0;
-	pthread_mutex_lock(&mutexBoxes);
+	pthread_mutex_lock(&mutexClose);
 	openBoxes++;
 	openBoxes++;
-	pthread_mutex_unlock(&mutexBoxes);
+	pthread_mutex_unlock(&mutexClose);
 	pthread_create (&box_1,	NULL,boxesActions,(void*)&arrayBoxes[0]);
 	pthread_create(&box_2,NULL,boxesActions,(void*)&arrayBoxes[1]);
 
@@ -206,30 +209,29 @@ void *boxesActions(void *arg){
 		
 			params->racerPos=-1;
 			params->carIsOut=0;
-			params->attendedCars++;
 			pthread_mutex_unlock(&mutexBox[params->boxID]);
-		
+			params->attendedCars++;
 			//Comprobar si hay que cerrar el box
 			
 			if(params->attendedCars>=3){
-				pthread_mutex_lock(&mutexBoxes);
+				pthread_mutex_lock(&mutexClose);
 
 				if(openBoxes>1){
 					params->isClosed=1;
 					params->attendedCars=0;
 					openBoxes--;
 				}
-				pthread_mutex_unlock(&mutexBoxes);
+				pthread_mutex_unlock(&mutexClose);
 			}
 			if(params->isClosed==1){
 				sprintf(msg,"box_%d",(params->boxID));
 				writeLogMessage(msg,"Se cierra temporalmente");
 				sleep(20);
-				pthread_mutex_lock(&mutexBoxes);
+				pthread_mutex_lock(&mutexClose);
 				params->isClosed=0;
 				openBoxes++;
 				writeLogMessage(msg,"Se abre");
-				pthread_mutex_unlock(&mutexBoxes);
+				pthread_mutex_unlock(&mutexClose);
 				
 			}
 		}else{
