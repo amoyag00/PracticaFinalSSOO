@@ -28,13 +28,13 @@ FILE *logFile;
 //flags
 int sanctionReceived;
 int sanctionedAfterCheck;
+int boxAssigned;
 
 
 int boxesWaitList[5] = {-1,-1,-1,-1,-1};//Guarda la posición que ocupa el corredor en el array 'arrayCars' 
 
 pthread_cond_t sanctionNoticed = PTHREAD_COND_INITIALIZER;
 pthread_cond_t sanctionEnded = PTHREAD_COND_INITIALIZER;
-pthread_cond_t condRepared=PTHREAD_COND_INITIALIZER;
 pthread_cond_t condBoxAssigned=PTHREAD_COND_INITIALIZER;
 pthread_cond_t condBox[2];
 
@@ -42,11 +42,11 @@ pthread_cond_t condBox[2];
 
 pthread_mutex_t mutexRacers;//Para acceder a arrayCars
 pthread_mutex_t mutexBoxes;//Para comunicarse ellos
-pthread_mutex_t mutexBoxesList;
-pthread_mutex_t mutexAssign;
-pthread_mutex_t mutexJudge;
+pthread_mutex_t mutexBoxesList;//Acceder a la lista de espera de mutex
+pthread_mutex_t mutexAssign;//Asignar box al corredor
+pthread_mutex_t mutexJudge;//Comunicar juez con Corredores
 pthread_mutex_t mutexVictory;//Para acceder a winnerRacer
-pthread_mutex_t mutexBox[2];
+pthread_mutex_t mutexBox[2];//Comunicar corredores con boxes
 
 
 
@@ -94,6 +94,7 @@ int main(){
 	racerNumber=0;
 	openBoxes=0;
 	sanctionReceived=0;
+	boxAssigned=0;
 	sanctionedAfterCheck=0;
 	
 	sig.sa_handler = racerCreation;
@@ -101,15 +102,13 @@ int main(){
 	if(sigaction(SIGUSR1,&sig,NULL)==-1){
 		printf("Error: %s\n", strerror(errno));
 	}
-	
-	boxesCreation();
-	//judgeCreation();
 
 	endSignal.sa_handler = endRace;
 	if(sigaction(SIGINT,&endSignal,NULL)==-1){
 		printf("Error: %s\n", strerror(errno));
 	}	
-	//usar el while para que el programa no acabe y poder mandar la señal(Carlos)
+	boxesCreation();
+	//judgeCreation();
 	for(;;){
 		pause();
 	}
@@ -129,16 +128,16 @@ void endRace(){
 void boxesCreation(){
 	pthread_t box_1;
 	pthread_t box_2;
-	BoxParameters paramsBox1;
-	BoxParameters paramsBox2;
-	paramsBox1.attendedCars=0;
-	paramsBox2.attendedCars=0;
-	paramsBox1.isClosed=0;
-	paramsBox2.isClosed=0;
-	paramsBox1.boxID=0;
-	paramsBox2.boxID=1;
-	pthread_create (&box_1,	NULL,boxesActions,(void*)&paramsBox1);
-	pthread_create(&box_2,NULL,boxesActions,(void*)&paramsBox2);
+	arrayBoxes[0].attendedCars=0;
+	arrayBoxes[1].attendedCars=0;
+	arrayBoxes[0].isClosed=0;
+	arrayBoxes[1].isClosed=0;
+	arrayBoxes[0].boxID=0;
+	arrayBoxes[1].boxID=1;
+	arrayBoxes[0].racerPos=-1;
+	arrayBoxes[1].racerPos=-1;
+	pthread_create (&box_1,	NULL,boxesActions,(void*)&arrayBoxes[0]);
+	pthread_create(&box_2,NULL,boxesActions,(void*)&arrayBoxes[1]);
 
 }
 
@@ -150,6 +149,7 @@ void *boxesActions(void *arg){
 	char racerNum[256];
 	srand(time(NULL));
 	for(;;){
+		
 		pthread_mutex_lock(&mutexBoxesList);
 		if(boxesWaitList[0]!=-1){
 			params->racerPos=boxesWaitList[0];
@@ -159,14 +159,21 @@ void *boxesActions(void *arg){
 				boxesWaitList[i]=boxesWaitList[i+1];
 				boxesWaitList[i+1]=-1;
 			}
-			pthread_mutex_unlock(&mutexBoxesList);
-
+		}	
+		pthread_mutex_unlock(&mutexBoxesList);
+		if(params->racerPos!=-1){
 			pthread_mutex_lock(&mutexAssign);
 			arrayCars[params->racerPos].boxAssociated=params->boxID;
 			pthread_cond_signal(&condBoxAssigned);
+			while(boxAssigned==0){
+				pthread_cond_wait(&condBoxAssigned,&mutexAssign);
+			}
+			boxAssigned=0;
+			pthread_mutex_lock(&mutexRacers);
 			sprintf(racerNum,"Corredor %d",arrayCars[params->racerPos].IDNumber);
-			sprintf(msg,"Entra en el box_%d",params->boxID+1);
+			sprintf(msg,"Entra en el box_%d",params->boxID);
 			writeLogMessage(racerNum,msg);
+			pthread_mutex_unlock(&mutexRacers);
 			pthread_mutex_unlock(&mutexAssign);
 			
 			
@@ -182,12 +189,13 @@ void *boxesActions(void *arg){
 				arrayCars[params->racerPos].repared=2;
 			}
 			pthread_cond_signal(&condBox[params->boxID]);
-			sprintf(msg,"Sale del box_%d",(params->boxID+1));
+			sprintf(msg,"Sale del box_%d",(params->boxID));
 			writeLogMessage(racerNum,msg);
+			params->racerPos=-1;
 			pthread_mutex_unlock(&mutexBox[params->boxID]);
-			
+		
 			//Comprobar si hay que cerrar el box
-			params->attendedCars++;
+			/*params->attendedCars++;
 			if(params->attendedCars>=3){
 				pthread_mutex_lock(&mutexBoxes);
 				if(openBoxes>1){
@@ -197,18 +205,15 @@ void *boxesActions(void *arg){
 				pthread_mutex_unlock(&mutexBoxes);
 			}
 			if(params->isClosed==1){
-				sprintf(msg,"box_%d",(params->boxID+1));
+				sprintf(msg,"box_%d",(params->boxID));
 				writeLogMessage(msg,"Se cierra temporalmente");
 				sleep(20);
 				params->isClosed=0;
 				writeLogMessage(msg,"Se abre");
-			}
-
+			}*/
 		}else{
-			pthread_mutex_unlock(&mutexBoxesList);
 			sleep(1);
-			
-		}	
+		}
 	}	
 }
 
@@ -269,6 +274,8 @@ void *racerAction(void *arg){
 				while(params->boxAssociated==-1){
 					pthread_cond_wait(&condBoxAssigned,&mutexAssign);
 				}
+				boxAssigned=1;
+				pthread_cond_signal(&condBoxAssigned);
 			pthread_mutex_unlock(&mutexAssign);
 			pthread_mutex_lock(&mutexBox[params->boxAssociated]);
 				while(params->repared==1){
@@ -289,7 +296,7 @@ void *racerAction(void *arg){
 			arrayCars[params->posInArray].repared = 0;
 			arrayCars[params->posInArray].boxAssociated = -1;
 			racerNumber--;
-			writeLogMessage(racerNum,"Se dispone a abandonarla carrera");
+			writeLogMessage(racerNum,"Se dispone a abandonar la carrera");
 			pthread_mutex_unlock(&mutexRacers);
 			pthread_exit(0);
 		}
