@@ -165,15 +165,14 @@ void *boxesActions(void *arg){
 			pthread_mutex_lock(&mutexAssign);
 			arrayCars[params->racerPos].boxAssociated=params->boxID;
 			pthread_cond_signal(&condBoxAssigned);
-			while(boxAssigned==0){
+			/*while(boxAssigned==0){
 				pthread_cond_wait(&condBoxAssigned,&mutexAssign);
 			}
-			boxAssigned=0;
-			pthread_mutex_lock(&mutexRacers);
+			boxAssigned=0;*/
+			
 			sprintf(racerNum,"Corredor %d",arrayCars[params->racerPos].IDNumber);
 			sprintf(msg,"Entra en el box_%d",params->boxID);
 			writeLogMessage(racerNum,msg);
-			pthread_mutex_unlock(&mutexRacers);
 			pthread_mutex_unlock(&mutexAssign);
 			
 			
@@ -274,15 +273,14 @@ void *racerAction(void *arg){
 				while(params->boxAssociated==-1){
 					pthread_cond_wait(&condBoxAssigned,&mutexAssign);
 				}
-				boxAssigned=1;
-				pthread_cond_signal(&condBoxAssigned);
 			pthread_mutex_unlock(&mutexAssign);
 			pthread_mutex_lock(&mutexBox[params->boxAssociated]);
 				while(params->repared==1){
 					pthread_cond_wait(&condBox[params->boxAssociated],&mutexBox[params->boxAssociated]);
 				}	
-				params->boxAssociated=-1;
+				
 			pthread_mutex_unlock(&mutexBox[params->boxAssociated]);
+			params->boxAssociated=-1;
 		}
 		if(params->repared==3){
 			pthread_mutex_lock(&mutexRacers);
