@@ -307,7 +307,17 @@ void *racerAction(void *arg){
 			pthread_mutex_unlock(&semaphore);
 			if(params->repared==2){
 				writeLogMessage(racerNum,"Se retira de la carrera");
-				pthread_cancel(pthread_self());
+					pthread_mutex_lock(&mutexRacers);
+					arrayCars[params->posInArray].IDNumber=0;
+					arrayCars[params->posInArray].sanctioned = 0;
+					arrayCars[params->posInArray].rounds = 0;
+					arrayCars[params->posInArray].initialT = 0;
+					arrayCars[params->posInArray].finalT = 0;
+					arrayCars[params->posInArray].totalT = 0;
+					arrayCars[params->posInArray].posInArray = 0;
+					racerNumber--;
+					pthread_mutex_unlock(&mutexRacers);
+				pthread_exit(0);
 			}		
 
 	
@@ -322,16 +332,7 @@ void *racerAction(void *arg){
 			sanctionReceived=1;
 			pthread_cond_signal(&sanctionNoticed);
 			while(params->sanctioned==1){
-				pthread_mutex_lock(&mutexRacers);
-				arrayCars[params->posInArray].IDNumber=0;
-				arrayCars[params->posInArray].sanctioned = 0;
-				arrayCars[params->posInArray].rounds = 0;
-				arrayCars[params->posInArray].initialT = 0;
-				arrayCars[params->posInArray].finalT = 0;
-				arrayCars[params->posInArray].totalT = 0;
-				arrayCars[params->posInArray].posInArray = 0;
-				racerNumber--;
-				pthread_mutex_unlock(&mutexRacers);
+				
 				pthread_cond_wait(&sanctionEnded,&mutexJudge);
 			}
 			pthread_mutex_unlock(&mutexJudge);	
