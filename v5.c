@@ -107,7 +107,9 @@ int main(int argc, char *argv[]){
 		maxCars=5;
 		maxBoxes = 2;
 		boxesWaitList = (int*)malloc(maxCars*sizeof(int));
+
 		arrayCars = (RacerParameters*)malloc(maxCars*sizeof(RacerParameters));
+		arrayBoxes = (BoxParameters*)malloc(maxBoxes*sizeof(BoxParameters));
 	}else if(argc==2){//Pass max car 
 		maxCars=atoi(argv[1]);
 		maxBoxes=2;
@@ -189,8 +191,7 @@ void *boxesActions(void *arg){
 			//Comprobar si hay problemas. 70% no tiene, 30% ;sí-> si hay abandonar carrera
 			prob=(rand()%10)+1;
 			
-			
-			pthread_mutex_lock(&mutexBoxesList);
+			pthread_mutex_lock(&mutexBoxes);
 			if(prob>7){
 				arrayCars[params->racerPos].repared=2;
 			}else{
@@ -201,9 +202,7 @@ void *boxesActions(void *arg){
 			sprintf(n,"Sale el corredor %d",arrayCars[params->racerPos].IDNumber);
 			writeLogMessage(msgBox,n);
 			pthread_cond_signal(&condRepared);
-			
-
-			pthread_mutex_unlock(&mutexBoxesList);
+			pthread_mutex_unlock(&mutexBoxes);
 			//Comprobar si hay que cerrar el box
 			params->attendedCars++;
 			if(params->attendedCars>=3){
@@ -222,9 +221,11 @@ void *boxesActions(void *arg){
 				sleep(20);
 				params->isClosed=0;
 				params->attendedCars=0;
+
+				pthread_mutex_lock(&mutexBoxes);
 				openBoxes++;
-				
 				writeLogMessage(msgBox,"Se abre");
+				pthread_mutex_unlock(&mutexBoxes);
 			}
 
 		}
