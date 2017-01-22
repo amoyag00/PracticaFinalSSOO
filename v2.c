@@ -163,7 +163,9 @@ void *boxesActions(void *arg){
 		pthread_mutex_unlock(&mutexBoxesList);
 		if(params->racerPos!=-1){
 			pthread_mutex_lock(&mutexAssign);
+			pthread_mutex_lock(&mutexRacers);
 			arrayCars[params->racerPos].boxAssociated=params->boxID;
+
 			pthread_cond_signal(&condBoxAssigned);
 			/*while(boxAssigned==0){
 				pthread_cond_wait(&condBoxAssigned,&mutexAssign);
@@ -172,6 +174,7 @@ void *boxesActions(void *arg){
 			
 			sprintf(racerNum,"Corredor %d",arrayCars[params->racerPos].IDNumber);
 			sprintf(msg,"Entra en el box_%d",params->boxID);
+			pthread_mutex_unlock(&mutexRacers);
 			writeLogMessage(racerNum,msg);
 			pthread_mutex_unlock(&mutexAssign);
 			
@@ -182,11 +185,13 @@ void *boxesActions(void *arg){
 			pthread_mutex_lock(&mutexBox[params->boxID]);
 			//Comprobar si hay problemas. 70% no tiene, 30% ;sí-> si hay abandonar carrera
 			prob=(rand()%10)+1;
+			pthread_mutex_lock(&mutexRacers);
 			if(prob>=7){
-				arrayCars[params->racerPos].repared=3;
-			}else{
 				arrayCars[params->racerPos].repared=2;
+			}else{
+				arrayCars[params->racerPos].repared=3;
 			}
+			pthread_mutex_unlock(&mutexRacers);
 			pthread_cond_signal(&condBox[params->boxID]);
 			sprintf(msg,"Sale del box_%d",(params->boxID));
 			writeLogMessage(racerNum,msg);
