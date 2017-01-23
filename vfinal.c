@@ -270,7 +270,7 @@ void racerCreation(){
 }
 
 void *racerAction(void *arg){
-	char racerNum [256], msg [256];
+	char racerNum [256], msg [256], endMsg[256];
 	int probBoxes,i,random;
 	RacerParameters *params = (RacerParameters *) arg;
 	sprintf(racerNum,"Corredor_%d",params->IDNumber);
@@ -348,6 +348,9 @@ void *racerAction(void *arg){
 		writeLogMessage(racerNum,msg);
 	}
 	params->sanctioned = -1;
+	sprintf(endMsg,"Acaba la carrera y sale del circuito");
+	writeLogMessage(racerNum,endMsg);
+	
 	pthread_mutex_lock(&mutexVictory);
 	if(params->totalT<winnerRacer.totalT){
 		winnerRacer.totalT = params->totalT;
