@@ -68,7 +68,7 @@ typedef struct racerParameters{
 	time_t totalT;
 }RacerParameters;
 
-//RacerParameters arrayCars[maxCars];
+
 RacerParameters *arrayCars;
 BoxParameters *arrayBoxes;
 RacerParameters winnerRacer = {.totalT = 500};
@@ -233,7 +233,7 @@ void *boxesActions(void *arg){
 			}
 
 		}
-		pthread_mutex_unlock(&mutexBoxes);	
+		pthread_mutex_unlock(&mutexBoxesList);	
 	}	
 }
 
@@ -248,7 +248,6 @@ void racerCreation(){
 		arrayCars[pos].posInArray = pos;
 		arrayCars[pos].boxAssigned = -1;
 		arrayCars[pos].repared= -1;
-		//printf("%d\n",pos);
 		
 		pthread_t racer;
 		pthread_create(&racer,NULL,racerAction,(void*)&arrayCars[pos]);
