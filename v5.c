@@ -23,6 +23,7 @@ void writeLogMessage(char *id, char *msg);
 int maxCars;
 int maxBoxes;
 
+int totalRacers;
 int openBoxes;
 
 int nRacer;
@@ -89,6 +90,7 @@ int main(int argc, char *argv[]){
 	pthread_cond_init(&condRepared,NULL); 
 
 	openBoxes=0;
+	totalRacers=0;
 	nRacer=1;
 	racerNumber=0;
 	sanctionReceived=0;
@@ -143,11 +145,22 @@ int main(int argc, char *argv[]){
 }
 
 void endRace(){
-	char msg[256], racerNum[256];
+	char msg[256], msg2[256], circuito[256], racerNum[256], endRace[256];
+	sprintf(circuito,"Circuito");
 
-	sprintf(msg,"Es el ganador de la carrera con un tiempo de %lu segundos",winnerRacer.totalT);
-	sprintf(racerNum,"Corredor_%d",winnerRacer.IDNumber);
-	writeLogMessage(racerNum, msg);
+	sprintf(enRace,"La carrera ha finalizado\n");
+	writeLogMessage(circuito,endRace);
+
+	sprintf(msg,"El total de corredores que han participado es: %d",totalRacers);
+	writeLogMessage(circuito, msg);
+	if(winnerRacer.IDNumber>0){
+		sprintf(msg2,"Es el ganador de la carrera con un tiempo de %lu segundos",winnerRacer.totalT);
+		sprintf(racerNum,"Corredor_%d",winnerRacer.IDNumber);
+		writeLogMessage(racerNum, msg2);
+	}else{
+		sprintf(msg2,"Ningún corredor ha completado la carrera");
+		writeLogMessage(circuito, msg2);
+	}
 	free(arrayCars);
 	free(arrayBoxes);
 	exit(0);
@@ -168,7 +181,7 @@ void boxesCreation(){
 
 void *boxesActions(void *arg){
 	BoxParameters * params=(BoxParameters*)arg;
-	char msgBox[256], n[256];;
+	char msgBox[256], sBox[256], aBox[256];
 	int prob=0;
 	int i=0;
 	srand(time(NULL));
@@ -180,7 +193,8 @@ void *boxesActions(void *arg){
 		if(boxesWaitList[0]>0){
 			params->racerPos=boxesWaitList[0]-1;
 			
-			
+			sprintf(aBox,"Accede a este box el corredor_%d",arrayCars[params->racerPos].IDNumber);
+			writeLogMessage(msgBox,aBox);
 			/*Desplaza la lista para que despues de atender
 			 al primero el segundo sea el primero, el tercero el segundo, etc.*/
 			
@@ -203,8 +217,8 @@ void *boxesActions(void *arg){
 			}
 			//mandar señal de terminar thread al racer
 			
-			sprintf(n,"Sale del box el corredor_%d",arrayCars[params->racerPos].IDNumber);
-			writeLogMessage(msgBox,n);
+			sprintf(sBox,"Sale del box el corredor_%d",arrayCars[params->racerPos].IDNumber);
+			writeLogMessage(msgBox,sBox);
 			pthread_cond_signal(&condRepared);
 			pthread_mutex_unlock(&mutexRepare);
 			//Comprobar si hay que cerrar el box
@@ -250,6 +264,7 @@ void racerCreation(){
 		arrayCars[pos].repared= -1;
 		
 		pthread_t racer;
+		totalRacers++;
 		pthread_create(&racer,NULL,racerAction,(void*)&arrayCars[pos]);
 		
 	}
