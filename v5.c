@@ -45,6 +45,7 @@ pthread_cond_t condBox[2];
 
 pthread_mutex_t mutexRacers;//Para acceder a arrayCars
 pthread_mutex_t mutexBoxes;//Para comunicarse ellos
+
 pthread_mutex_t mutexBoxesList;
 pthread_mutex_t mutexJudge;
 pthread_mutex_t mutexVictory;//Para acceder a winnerRacer
@@ -191,18 +192,19 @@ void *boxesActions(void *arg){
 			//Comprobar si hay problemas. 70% no tiene, 30% ;sí-> si hay abandonar carrera
 			prob=(rand()%10)+1;
 			
-			pthread_mutex_lock(&mutexBoxes);
+			
 			if(prob>7){
 				arrayCars[params->racerPos].repared=2;
 			}else{
 				arrayCars[params->racerPos].repared=1;
 			}
 			//mandar señal de terminar thread al racer
-			char n[25];
-			sprintf(n,"Sale el corredor %d",arrayCars[params->racerPos].IDNumber);
+			//pthread_mutex_lock(&mutexBoxes);
+			char n[256];
+			sprintf(n,"Sale del box el corredor %d",arrayCars[params->racerPos].IDNumber);
 			writeLogMessage(msgBox,n);
 			pthread_cond_signal(&condRepared);
-			pthread_mutex_unlock(&mutexBoxes);
+			//pthread_mutex_unlock(&mutexBoxes);
 			//Comprobar si hay que cerrar el box
 			params->attendedCars++;
 			if(params->attendedCars>=3){
@@ -317,6 +319,7 @@ void *racerAction(void *arg){
 					arrayCars[params->posInArray].totalT = 0;
 					arrayCars[params->posInArray].posInArray = 0;
 					racerNumber--;
+					pthread_cond_signal(&sanctionNoticed);
 					pthread_mutex_unlock(&mutexRacers);
 				pthread_exit(0);
 			}		
