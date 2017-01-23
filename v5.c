@@ -98,7 +98,11 @@ int main(int argc, char *argv[]){
 		printf("Error: %s\n", strerror(errno));
 	}
 	
-	
+	endSignal.sa_handler = endRace;
+	if(sigaction(SIGINT,&endSignal,NULL)==-1){
+		printf("Error: %s\n", strerror(errno));
+	}
+
 	judgeCreation();	
 
 	if (argc>=4){
@@ -132,6 +136,7 @@ int main(int argc, char *argv[]){
 	while(TRUE){
 
 	}
+
 	free(arrayCars);
 	free(arrayBoxes);
 	return 0;
@@ -199,12 +204,12 @@ void *boxesActions(void *arg){
 				arrayCars[params->racerPos].repared=1;
 			}
 			//mandar señal de terminar thread al racer
-			//pthread_mutex_lock(&mutexBoxes);
+			pthread_mutex_lock(&semaphore);
 			char n[256];
 			sprintf(n,"Sale del box el corredor %d",arrayCars[params->racerPos].IDNumber);
 			writeLogMessage(msgBox,n);
 			pthread_cond_signal(&condRepared);
-			//pthread_mutex_unlock(&mutexBoxes);
+			pthread_mutex_unlock(&semaphore);
 			//Comprobar si hay que cerrar el box
 			params->attendedCars++;
 			if(params->attendedCars>=3){
@@ -248,7 +253,7 @@ void racerCreation(){
 		arrayCars[pos].posInArray = pos;
 		arrayCars[pos].boxAssigned = -1;
 		arrayCars[pos].repared= -1;
-		printf("%d\n",pos);
+		//printf("%d\n",pos);
 		
 		pthread_t racer;
 		pthread_create(&racer,NULL,racerAction,(void*)&arrayCars[pos]);
@@ -332,7 +337,7 @@ void *racerAction(void *arg){
 		
 		if(params->sanctioned==1){
 			pthread_mutex_lock(&mutexJudge);
-			printf("%d esperó por juez\n",params->IDNumber);
+			//printf("%d esperó por juez\n",params->IDNumber);
 			sanctionReceived=1;
 			pthread_cond_signal(&sanctionNoticed);
 			while(params->sanctioned==1){
